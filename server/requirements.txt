@@ -1,0 +1,5 @@
+flask==3.1.2
+numpy==2.3.3
+rasterio==1.4.3
+pyproj==3.7.2
+gunicorn==23.0.0
