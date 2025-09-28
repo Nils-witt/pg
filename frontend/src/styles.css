@@ -111,6 +111,11 @@ body, html {
     font-size: 1.08em;
     color: #222;
     font-weight: 600;
+    width: 4em;
+    border: 0;
+    border-radius: 5px;
+    padding-left: 3px;
+    background: lightblue;
 }
 
 .expected-signal {

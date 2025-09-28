@@ -6,6 +6,8 @@
 import {Map as MapLibreMap} from "maplibre-gl";
 import {Antenna, AntennaEnum} from "../Antenna";
 import {DataProvider} from "../DataProvider";
+import {DistanceUIController} from "./DistanceUIController";
+
 
 /**
  * Singleton controller for drawing and updating the line between antennas on the map.
@@ -16,7 +18,8 @@ export class LineController {
     /**
      * Private constructor for singleton pattern.
      */
-    private constructor() {}
+    private constructor() {
+    }
 
     /**
      * Returns the singleton instance of LineController.
@@ -66,25 +69,41 @@ export class LineController {
                 'data': this.geojson
             });
         }
-        if (!map.getLayer('line-animation')) {
-            map.addLayer({
-                'id': 'line-animation',
-                'type': 'line',
-                'source': 'line',
-                'layout': {
-                    'line-cap': 'round',
-                    'line-join': 'round'
-                },
-                'paint': {
-                    'line-color': '#ed6498',
-                    'line-width': 5,
-                    'line-opacity': 0.8
-                }
-            });
-        }
+        map.removeLayer('line-animation');
+
+        map.addLayer({
+            'id': 'line-animation',
+            'type': 'line',
+            'source': 'line',
+            'layout': {
+                'line-cap': 'round',
+                'line-join': 'round'
+            },
+            'paint': {
+                'line-color': this.getLineColor(antenna_one, antenna_two),
+                'line-width': 3,
+                'line-opacity': 0.8
+            }
+        });
+
         this.geojson.features[0].geometry.coordinates = [[antenna_one.getLatlng().lng, antenna_one.getLatlng().lat], [antenna_two.getLatlng().lng, antenna_two.getLatlng().lat]];
         // @ts-ignore
         map.getSource('line').setData(this.geojson)
+    }
+
+
+    private getLineColor(antenna_one: Antenna, antenna_two: Antenna): string {
+        const distance = DistanceUIController.calculateDistanceBetweenAntennas(antenna_one, antenna_two);
+        if (antenna_one.getExpectedRange() > distance && antenna_two.getExpectedRange() > distance) {
+            return 'green';
+        } else if (antenna_one.getExpectedRange() > distance && antenna_two.getExpectedRange() <= distance) {
+            return 'orange';
+        } else if (antenna_one.getExpectedRange() <= distance && antenna_two.getExpectedRange() > distance) {
+            return 'orange';
+        }
+
+
+        return 'red';
     }
 
     /**

@@ -7,6 +7,7 @@ import {LngLat, Map as MapLibreMap, Marker} from "maplibre-gl";
 import {DataProvider, DataProviderEventEnum} from "./DataProvider";
 import {UIHelpers} from "./uihelpers";
 import {DistanceUIController} from "./controllers/DistanceUIController";
+import {Circle} from "./Enitities/Circle";
 
 /**
  * Enum for identifying antennas.
@@ -44,7 +45,14 @@ export class Antenna {
      * The marker for the antenna on the map.
      * @type {Marker}
      */
-    private marker = new Marker();
+    private marker: Marker;
+
+    /**
+     * The circle for the antenna on the map.
+     * @private
+     * @type {Circle}
+     */
+    private circle: Circle;
     /**
      * The map instance.
      * @type {MapLibreMap | null}
@@ -55,6 +63,17 @@ export class Antenna {
      * @type {AntennaEnum}
      */
     private id: AntennaEnum;
+
+    /**
+     * The antenna sensitivity in dBm.
+     * @type {number}
+     */
+    private antennaSensitivity: number = 0;
+
+    /**
+     * The associated antenna. We can associate an antenna with another antenna to calculate the expected signal.
+     * @type {Antenna | null}
+     */
     private associatedAntenna: Antenna | null = null;
 
     /**
@@ -69,6 +88,25 @@ export class Antenna {
      */
     constructor(id: AntennaEnum) {
         this.id = id;
+        if (this.id === AntennaEnum.ONE) {
+            this.marker = new Marker({
+                    color: '#0000FF',
+                }
+            )
+            this.circle = new Circle({
+                color: '#0000FF',
+            })
+        }
+        if (this.id === AntennaEnum.TWO) {
+            this.marker = new Marker({
+                    color: 'magenta',
+                }
+            )
+            this.circle = new Circle({
+                    color: 'magenta',
+                }
+            )
+        }
     }
 
     /**
@@ -127,13 +165,7 @@ export class Antenna {
      */
     setHeight(height: number | undefined): void {
         this.height = height;
-        document.querySelectorAll(`.station-card.${this.id} .station-row`).forEach(row => {
-            row.querySelectorAll('.label').forEach((label, idx) => {
-                if (label.textContent.trim() === 'Height') {
-                    row.querySelectorAll('.value')[idx].textContent = String(height) + " m";
-                }
-            });
-        });
+        this.updateUIElement('Height', height);
         this.updateExpectedSignal();
     }
 
@@ -144,14 +176,7 @@ export class Antenna {
      */
     setTransmittedPower(power: number): void {
         this.transmittedPower_dBm = power;
-        document.querySelectorAll(`.station-card.${this.id} .station-row`).forEach(row => {
-            row.querySelectorAll('.label').forEach((label, idx) => {
-                if (label.textContent.trim() === 'Transmitted Power (dBm)') {
-                    let valueField = row.querySelectorAll('.value')[idx] as HTMLInputElement;
-                    valueField.value = String(power);
-                }
-            });
-        });
+        this.updateUIElement('Transmitted Power (dBm)', power);
         this.updateExpectedSignal();
     }
 
@@ -162,14 +187,7 @@ export class Antenna {
      */
     setAntennaGain(gain: number): void {
         this.antennaGain_dBi = gain;
-        document.querySelectorAll(`.station-card.${this.id} .station-row`).forEach(row => {
-            row.querySelectorAll('.label').forEach((label, idx) => {
-                if (label.textContent.trim() === 'Antenna Gain (dBi)') {
-                    let valueField = row.querySelectorAll('.value')[idx] as HTMLInputElement;
-                    valueField.value = String(gain);
-                }
-            });
-        });
+        this.updateUIElement('Antenna Gain (dBi)', gain);
         this.updateExpectedSignal();
     }
 
@@ -180,9 +198,12 @@ export class Antenna {
      */
     setLatlng(latlng: LngLat | undefined): void {
         this.latlng = latlng;
+
         if (this.map) {
             this.marker.setLngLat(this.latlng);
             this.marker.addTo(this.map);
+            this.circle.setLatLng(latlng);
+            this.circle.addTo(this.map);
         }
         const selector = `.station-card.${this.id} .station-location .value`;
         document.querySelector(selector).textContent = latlng.lat.toPrecision(4) + ', ' + latlng.lng.toPrecision(4);
@@ -234,15 +255,7 @@ export class Antenna {
      */
     setFrequency(frequency: number): void {
         this.frequency = frequency;
-        console.log(this.id, this.frequency)
-        document.querySelectorAll(`.station-card.${this.id} .station-row`).forEach(row => {
-            const label = row.querySelector('.label');
-            console.log(label)
-            if (label && label.textContent.trim() === 'Frequency (MHz)') {
-                let valueField = row.querySelector('.value') as HTMLInputElement;
-                valueField.value = String(frequency / 1000);
-            }
-        });
+        this.updateUIElement('Frequency (MHz)', String(frequency / 1000));
         this.updateExpectedSignal();
     }
 
@@ -252,33 +265,9 @@ export class Antenna {
      * @returns {void}
      */
     setAzimuth(to: Antenna): void {
-        document.querySelectorAll(`.station-card.${this.id} .station-row`).forEach(row => {
-            row.querySelectorAll('.label').forEach((label, idx) => {
-                if (label.textContent.trim() === 'Azimuth') {
-                    let azimuth = UIHelpers.calculateAzimuth(this.getLatlng(), to.getLatlng());
-                    if (azimuth) {
-                        row.querySelectorAll('.value')[idx].textContent = azimuth.toFixed(1);
-                    } else {
-                        row.querySelectorAll('.value')[idx].textContent = 'N/A';
-                    }
-                }
-            });
-        });
-    }
 
-    /**
-     * Sets the tilt angle in the UI.
-     * @param {number} tilt - The tilt value
-     * @returns {void}
-     */
-    setTilt(tilt: number): void {
-        document.querySelectorAll(`.station-card.${this.id} .station-row`).forEach(row => {
-            row.querySelectorAll('.label').forEach((label, idx) => {
-                if (label.textContent.trim() === 'Tilt') {
-                    row.querySelectorAll('.value')[idx].textContent = String(tilt);
-                }
-            });
-        });
+        const azimuth = UIHelpers.calculateAzimuth(this.getLatlng(), to.getLatlng());
+        this.updateUIElement('Azimuth', azimuth ? azimuth.toFixed(1) : 'N/A');
     }
 
     /**
@@ -289,6 +278,19 @@ export class Antenna {
     setExpectedSignal(signal: number): void {
         const selector = `.station-card.${this.id} .expected-signal .value`;
         document.querySelector(selector).textContent = signal.toFixed(2) + " dBm";
+    }
+
+    /**
+     * Gets the expected range value based on the antenna parameters.
+     * @returns {number} The expected range in meters
+     */
+    getExpectedRange(): number {
+        if (this.associatedAntenna) {
+            return UIHelpers.getMaxDistanceFriis(this.transmittedPower_dBm, this.antennaGain_dBi, this.associatedAntenna.getAntennaGain(), this.frequency * 1000000, this.associatedAntenna.getSensitivity());
+
+        } else {
+            return UIHelpers.getMaxDistanceFriis(this.transmittedPower_dBm, this.antennaGain_dBi, this.antennaGain_dBi, this.frequency * 1000000, this.antennaSensitivity);
+        }
     }
 
     /**
@@ -306,6 +308,25 @@ export class Antenna {
         return this.associatedAntenna;
     }
 
+    setSensitivity(sensitivity: number): void {
+        this.antennaSensitivity = sensitivity;
+        this.updateUIElement('Sensitivity', sensitivity);
+    }
+
+    private updateUIElement(label: string, value: number | string): void {
+        document.querySelectorAll(`.station-card.${this.id} .station-row`).forEach(row => {
+            row.querySelectorAll('.label').forEach((labelEl, idx) => {
+                if (labelEl.textContent.trim() === label) {
+                    let el = row.querySelectorAll('.value')[idx] as HTMLInputElement;
+                    el.value = String(value);
+                }
+            });
+        });
+    }
+
+    getSensitivity(): number {
+        return this.antennaSensitivity;
+    }
 
     updateExpectedSignal(no_rec = false): void {
         if (!this.associatedAntenna) {
@@ -320,9 +341,11 @@ export class Antenna {
             distance
         );
         this.setExpectedSignal(pr);
+        let range = this.getExpectedRange();
+        this.circle.setRadius(range);
         if (!no_rec) {
             this.associatedAntenna.updateExpectedSignal(true);
-
         }
+
     }
 }

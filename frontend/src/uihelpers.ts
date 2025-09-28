@@ -23,7 +23,8 @@ export class UIHelpers {
     /**
      * Private constructor to enforce singleton pattern.
      */
-    private constructor() {}
+    private constructor() {
+    }
 
     /**
      * Initializes UIHelpers by subscribing to antenna position change events.
@@ -93,6 +94,63 @@ export class UIHelpers {
         return points;
     }
 
+
+    /**
+     * Calculates the Friis transmission loss for a given distance, frequency, and gain.
+     * @param distance - Distance in meters
+     * @param frequency - Frequency in Hz
+     * @param gainTx_dBi - Transmitter gain in dBi
+     * @param gainRx_dBi - Receiver gain in dBi
+     * @returns {number} Friis transmission loss in dB
+     */
+    static friisPropagationLoss(distance: number, frequency: number, gainTx_dBi: number = 0, gainRx_dBi: number = 0): number {
+        const c = 299792458; // Speed of light (m/s)
+        const wavelength = c / frequency;
+
+        // Convert dBi to linear
+        const gainTx = Math.pow(10, gainTx_dBi / 10);
+        const gainRx = Math.pow(10, gainRx_dBi / 10);
+
+        // Friis transmission equation (linear ratio)
+        const ratio = (gainTx * gainRx * Math.pow(wavelength, 2)) / Math.pow(4 * Math.PI * distance, 2);
+
+        // Convert ratio to dB
+        if (10 * Math.log10(ratio) < 0) {
+            return 10 * Math.log10(ratio);
+        } else {
+            return 0;
+        }
+    }
+
+    /**
+     * Calculates the Friis propagation distance for a given frequency, gain, and maximum loss.
+     * @param frequency - Frequency in Hz
+     * @param gainTx_dBi - Transmitter gain in dBi
+     * @param gainRx_dBi - Receiver gain in dBi
+     * @param loss_dB - Maximum loss in dB
+     * @returns {number} Friis propagation distance in meters
+     */
+    static friisPropagationDistance(loss_dB: number, frequency: number, gainTx_dBi: number = 0, gainRx_dBi: number = 0): number {
+        const c = 299792458; // Speed of light (m/s)
+        const wavelength = c / frequency;
+
+        // Convert dBi to linear
+        const gainTx = Math.pow(10, gainTx_dBi / 10);
+        const gainRx = Math.pow(10, gainRx_dBi / 10);
+
+        // Convert loss from dB to linear ratio
+        const loss_linear = Math.pow(10, loss_dB / 10);
+
+        // Rearranged Friis equation:
+        // loss_linear = (gainTx * gainRx * wavelength^2) / (4 * pi * d)^2
+        // => (gainTx * gainRx * wavelength^2) / loss_linear = (4 * pi * d)^2
+        // => sqrt((gainTx * gainRx * wavelength^2) / loss_linear) / (4 * pi) = d
+        const numerator = gainTx * gainRx * Math.pow(wavelength, 2);
+        return Math.sqrt(numerator / loss_linear) / (4 * Math.PI);
+
+    }
+
+
     /**
      * Calculates the received signal strength (in dBm) using the Friis transmission equation.
      * @param {number} pt_dBm - Transmitted power in dBm
@@ -103,21 +161,24 @@ export class UIHelpers {
      * @returns {number} Received signal strength in dBm
      */
     static calculateFriisSignal(pt_dBm: number, gt_dBi: number, gr_dBi: number, freq_Hz: number, distance_m: number): number {
-        const c = 299792458; // Speed of light in m/s
-        const lambda = c / freq_Hz; // Wavelength in meters
-        const denominator = 4 * Math.PI * distance_m;
-        const pathLoss_dB = 20 * Math.log10(lambda / denominator);
+        const pathLoss_dB = this.friisPropagationLoss(distance_m, freq_Hz, gt_dBi, gr_dBi);
         return pt_dBm + gt_dBi + gr_dBi + pathLoss_dB;
+    }
+
+    static getMaxDistanceFriis(pt_dBm: number, gt_dBi: number, gr_dBi: number, freq_Hz: number, sensitivity_dBm: number): number {
+        const combinded_gain = gt_dBi + gr_dBi + pt_dBm;
+        if (combinded_gain > sensitivity_dBm) {
+            const max_pathloss_dB = sensitivity_dBm - combinded_gain;
+            return this.friisPropagationDistance(max_pathloss_dB, freq_Hz, gt_dBi, gr_dBi);
+        }
+        return -1;
     }
 
     /**
      * Handles updates when antenna positions change: updates line, chart, and distance UI, and recalculates azimuths.
-     * @param {DataProviderEventEnum} event - Event type
-     * @param {any} data - Event data (should include antenna info)
      * @returns {void}
      */
-    private updatedPositionHandler(event: DataProviderEventEnum, data: any): void {
-        console.log('updatedPositionHandler', event, data.antenna);
+    private updatedPositionHandler(): void {
         LineController.getInstance().update();
         ChartController.getInstance().update();
         DistanceUIController.getInstance().update();

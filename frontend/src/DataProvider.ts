@@ -83,8 +83,8 @@ export class DataProvider {
         antenna_two.addToMap(map);
         antenna_one.setAssociatedAntenna(antenna_two);
         antenna_two.setAssociatedAntenna(antenna_one);
-        antenna_one.setDeviceName("Antenna One");
-        antenna_two.setDeviceName("Antenna Two");
+        antenna_one.setDeviceName("Antenna One (Blue)");
+        antenna_two.setDeviceName("Antenna Two (Pink)");
         antenna_one.setHeight(5);
         antenna_two.setHeight(6);
         antenna_one.setTransmittedPower(20);
@@ -92,7 +92,9 @@ export class DataProvider {
         antenna_one.setAntennaGain(10);
         antenna_two.setAntennaGain(11);
         antenna_one.setFrequency(240000);
-        antenna_two.setFrequency(240000)
+        antenna_two.setFrequency(240000);
+        antenna_one.setSensitivity(-100);
+        antenna_two.setSensitivity(-100)
     }
 
     /**
