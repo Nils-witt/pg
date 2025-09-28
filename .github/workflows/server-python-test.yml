@@ -28,6 +28,5 @@ jobs:
         pip install flake8 pytest
         if [ -f server/requirements.txt ]; then pip install -r server/requirements.txt; fi
     - name: Test with pytest
-      working-directory: server/
       run: |
-        python -m py_compile script.py
+        python -m py_compile server/app.py
