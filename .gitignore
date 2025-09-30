@@ -1,3 +1,5 @@
-/.venv/
-/.idea/
 /server/data/
+.idea
+.venv
+dist
+node_modules

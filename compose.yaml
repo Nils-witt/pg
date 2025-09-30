@@ -1,7 +1,3 @@
-
-
-
-
 services:
   proxy:
     image: nginx:latest
@@ -12,6 +8,6 @@ services:
   app:
     build: server/.
     volumes:
-      - /Users/nilswitt/Downloads/dgm1_tiff_kacheln:/dgm1_tiff_kacheln
+      - ./dgm1_tiff_kacheln:/dgm1_tiff_kacheln
   frontend:
     build: frontend/.
