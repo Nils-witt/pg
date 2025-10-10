@@ -89,7 +89,6 @@ curl "http://localhost:5001/?latitude1=52.0&longitude1=13.0&latitude2=52.1&longi
 ## Data
 
 - The compose files mount `./dgm1_tiff_kacheln` to `/dgm1_tiff_kacheln` in the app container. Place your elevation tiles there.
-- The project also contains `data/scenes/` and various meshes/textures used by the frontend.
 
 ## Build & CI notes
 
